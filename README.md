@@ -1,5 +1,9 @@
 # VisionDeck
 
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red)](https://streamlit.io/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 VisionDeck is a lightweight computer vision dashboard that bundles three academic mini-projects into one polished Streamlit app:
 
 - Face Detection System
@@ -106,6 +110,7 @@ python -m streamlit run streamlit_app.py
 ## Documentation
 
 - Installation guide: [docs/INSTALLATION.md](docs/INSTALLATION.md)
+- Repository: [github.com/faresmohamed260/visiondeck-cv-suite](https://github.com/faresmohamed260/visiondeck-cv-suite)
 
 ## Notes
 

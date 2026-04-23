@@ -9,7 +9,7 @@
 ## 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<your-username>/visiondeck-cv-suite.git
+git clone https://github.com/faresmohamed260/visiondeck-cv-suite.git
 cd visiondeck-cv-suite
 ```
 
