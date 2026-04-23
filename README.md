@@ -17,11 +17,13 @@ It supports both laptop webcams and Android phones running the **IP Webcam** app
 - Simple Streamlit dashboard for running all three projects
 - Separate project modules for clean coursework organization
 - Support for local webcam and Android IP Webcam
-- Automatic IP camera discovery on the same network
+- Quick Scan and Full Scan IP camera discovery modes
+- Cached last-known Android camera IP for faster repeat launches
 - Live video feed inside the dashboard
 - Image upload support for testing still images
 - Face landmarks and face bounding boxes
 - Hand skeleton overlay with gesture recognition
+- Thumbs up, thumbs down, peace, fist, open palm, and pointing gestures
 - Real-time object detection with YOLO
 
 ## Demo Modules
@@ -63,18 +65,18 @@ It supports both laptop webcams and Android phones running the **IP Webcam** app
 
 ```text
 visiondeck-cv-suite/
-├── common/
-│   └── camera.py
-├── face_detection_system/
-│   └── detector.py
-├── hand_gesture_recognition/
-│   └── recognizer.py
-├── real_time_object_detection/
-│   └── detector.py
-├── docs/
-│   └── INSTALLATION.md
-├── requirements.txt
-└── streamlit_app.py
+|-- common/
+|   `-- camera.py
+|-- face_detection_system/
+|   `-- detector.py
+|-- hand_gesture_recognition/
+|   `-- recognizer.py
+|-- real_time_object_detection/
+|   `-- detector.py
+|-- docs/
+|   `-- INSTALLATION.md
+|-- requirements.txt
+`-- streamlit_app.py
 ```
 
 ## Quick Start
@@ -104,8 +106,20 @@ python -m streamlit run streamlit_app.py
 1. Install the **IP Webcam** app on your Android phone.
 2. Connect the phone and laptop to the same Wi-Fi network.
 3. Start the server from the app.
-4. In VisionDeck, click `Refresh Cameras`.
-5. Select the discovered `IP Webcam (...)` source.
+4. In VisionDeck, choose `Quick Scan` for the normal path or `Full Scan` if the phone is not found.
+5. Click `Refresh Cameras`.
+6. Select the discovered `IP Webcam (...)` source.
+
+### Discovery Modes
+
+- `Quick Scan`: Tries the last successful phone IP first, then scans likely local addresses.
+- `Full Scan`: Scans the full local subnet and may take longer, but is more exhaustive.
+
+### Live Usage Notes
+
+- Press `Start` after selecting the project and camera source.
+- Switching between projects restarts the processing pipeline for the same live feed.
+- If the image ever stops updating after major changes, stop and start the stream again.
 
 ## Documentation
 
@@ -115,6 +129,7 @@ python -m streamlit run streamlit_app.py
 ## Notes
 
 - The first object detection run may download `yolov8n.pt`.
+- Object detection uses a lightweight YOLO configuration for better CPU responsiveness.
 - For best performance, use good lighting and a stable camera angle.
 - IP camera performance depends on Wi-Fi quality.
 

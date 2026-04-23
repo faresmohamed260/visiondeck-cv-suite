@@ -56,11 +56,19 @@ http://localhost:8501
 
 Open it in your browser.
 
+## 7. Discover Cameras
+
+- Select `Quick Scan` for the fastest normal workflow.
+- Select `Full Scan` if your Android phone is not found.
+- Click `Refresh Cameras`.
+- Choose the detected camera source and press `Start`.
+
 ## Troubleshooting
 
 ### Camera is not detected
 
 - Click `Refresh Cameras`
+- Try `Full Scan` if `Quick Scan` does not find the phone
 - Make sure no other app is locking the camera
 - Reconnect the phone and laptop to the same Wi-Fi network
 
@@ -75,3 +83,10 @@ Open it in your browser.
 - Prefer the laptop webcam for lower latency
 - Use a stable Wi-Fi connection for IP Webcam
 - Close unnecessary apps using the camera or CPU
+- Object detection is heavier than face or hand tracking and may run at a lower effective FPS
+
+### Wrong processing mode appears to stay active
+
+- Stop the stream
+- Select the new project
+- Start the stream again

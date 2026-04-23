@@ -9,4 +9,5 @@ __pycache__/
 .idea/
 yolov8n.pt
 Final Project.pdf
+common/camera_cache.json
 *.log

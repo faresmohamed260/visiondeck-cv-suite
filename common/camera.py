@@ -8,6 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import List, Optional
 from urllib.parse import urlparse
 
@@ -18,6 +19,7 @@ import requests
 
 REQUEST_TIMEOUT = 0.35
 DEFAULT_IP_WEBCAM_PORT = 8080
+CACHE_FILE = Path(__file__).resolve().parent / "camera_cache.json"
 
 
 @dataclass
@@ -94,6 +96,67 @@ def _local_ipv4_networks() -> List[ipaddress.IPv4Network]:
     return networks
 
 
+def _local_ipv4_addresses() -> List[str]:
+    addresses: list[str] = []
+    seen: set[str] = set()
+    hostname = socket.gethostname()
+
+    try:
+        for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+            address = info[4][0]
+            if address.startswith("127.") or address in seen:
+                continue
+            seen.add(address)
+            addresses.append(address)
+    except socket.gaierror:
+        pass
+
+    try:
+        address = socket.gethostbyname(hostname)
+        if not address.startswith("127.") and address not in seen:
+            addresses.append(address)
+    except socket.gaierror:
+        pass
+
+    return addresses
+
+
+def _read_camera_cache() -> dict:
+    try:
+        return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _write_camera_cache(payload: dict) -> None:
+    CACHE_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _get_cached_ip_webcam() -> Optional[str]:
+    payload = _read_camera_cache()
+    cached_ip = payload.get("last_ip_webcam")
+    if isinstance(cached_ip, str) and cached_ip:
+        return cached_ip
+    return None
+
+
+def cache_ip_webcam_source(source: CameraSource) -> None:
+    if source.kind != "ip_webcam" or not source.base_url:
+        return
+
+    try:
+        cached_ip = urlparse(source.base_url).hostname
+    except ValueError:
+        return
+
+    if not cached_ip:
+        return
+
+    payload = _read_camera_cache()
+    payload["last_ip_webcam"] = cached_ip
+    _write_camera_cache(payload)
+
+
 def _is_ip_webcam_host(ip: str, port: int = DEFAULT_IP_WEBCAM_PORT) -> Optional[CameraSource]:
     base_url = f"http://{ip}:{port}"
     checks = [
@@ -127,17 +190,60 @@ def _is_ip_webcam_host(ip: str, port: int = DEFAULT_IP_WEBCAM_PORT) -> Optional[
     return None
 
 
-def discover_ip_webcams(max_hosts_per_network: int = 254) -> List[CameraSource]:
+def _build_ip_candidates(networks: List[ipaddress.IPv4Network], mode: str) -> List[str]:
+    cached_ip = _get_cached_ip_webcam()
+    candidates: list[str] = []
+    seen: set[str] = set()
+    local_addresses = _local_ipv4_addresses()
+
+    def add_candidate(ip: str) -> None:
+        if ip in seen:
+            return
+        seen.add(ip)
+        candidates.append(ip)
+
+    if cached_ip:
+        add_candidate(cached_ip)
+
+    for address in local_addresses:
+        octets = address.split(".")
+        if len(octets) != 4:
+            continue
+        prefix = ".".join(octets[:3])
+        host_number = int(octets[3])
+
+        if mode == "quick":
+            likely_hosts = [host_number + offset for offset in range(-8, 9)]
+            likely_hosts += list(range(100, 111))
+            likely_hosts += list(range(120, 141))
+            likely_hosts += list(range(150, 171))
+            likely_hosts += list(range(180, 201))
+            likely_hosts += list(range(2, 20))
+            for host in likely_hosts:
+                if 1 <= host <= 254:
+                    add_candidate(f"{prefix}.{host}")
+
+    for network in networks:
+        hosts = [str(host) for host in network.hosts()]
+        if mode == "quick":
+            tail_hosts = hosts[-40:]
+            head_hosts = hosts[:20]
+            middle_hosts = hosts[99:140]
+            for ip in tail_hosts + middle_hosts + head_hosts:
+                add_candidate(ip)
+        else:
+            for ip in hosts[:254]:
+                add_candidate(ip)
+
+    return candidates
+
+
+def discover_ip_webcams(mode: str = "quick") -> List[CameraSource]:
     networks = _local_ipv4_networks()
     if not networks:
         return []
 
-    candidates: list[str] = []
-    for network in networks:
-        for index, host in enumerate(network.hosts()):
-            if index >= max_hosts_per_network:
-                break
-            candidates.append(str(host))
+    candidates = _build_ip_candidates(networks, mode=mode)
 
     results: list[CameraSource] = []
     with ThreadPoolExecutor(max_workers=24) as executor:
@@ -145,16 +251,17 @@ def discover_ip_webcams(max_hosts_per_network: int = 254) -> List[CameraSource]:
         for future in as_completed(futures):
             source = future.result()
             if source:
+                cache_ip_webcam_source(source)
                 results.append(source)
 
     results.sort(key=lambda item: item.name)
     return results
 
 
-def discover_all_cameras() -> List[CameraSource]:
+def discover_all_cameras(scan_mode: str = "quick") -> List[CameraSource]:
     sources = discover_local_cameras()
     known_ids = {source.source_id for source in sources}
-    for source in discover_ip_webcams():
+    for source in discover_ip_webcams(mode=scan_mode):
         if source.source_id not in known_ids:
             sources.append(source)
     return sources
