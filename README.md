@@ -10,6 +10,10 @@ VisionDeck is a lightweight computer vision dashboard that bundles three academi
 - Hand Gesture Recognition
 - Real-Time Object Detection
 
+This repository also includes a separate standalone coursework deliverable for object detection fine-tuning:
+
+- `standalone_detection_assignment/` for a notebook-based assignment using a custom 3-class COCO subset and YOLOv8 fine-tuning
+
 It supports both laptop webcams and Android phones running the **IP Webcam** app, with automatic IP camera discovery on the local network.
 
 ## Features
@@ -124,6 +128,7 @@ python -m streamlit run streamlit_app.py
 ## Documentation
 
 - Installation guide: [docs/INSTALLATION.md](docs/INSTALLATION.md)
+- Standalone assignment: [standalone_detection_assignment/README.md](standalone_detection_assignment/README.md)
 - Repository: [github.com/faresmohamed260/visiondeck-cv-suite](https://github.com/faresmohamed260/visiondeck-cv-suite)
 
 ## Notes

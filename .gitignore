@@ -11,3 +11,9 @@ yolov8n.pt
 Final Project.pdf
 common/camera_cache.json
 *.log
+standalone_detection_assignment/dataset/
+standalone_detection_assignment/datasets/
+standalone_detection_assignment/downloads/
+standalone_detection_assignment/runs/
+standalone_detection_assignment/__pycache__/
+standalone_detection_assignment/*.pt
