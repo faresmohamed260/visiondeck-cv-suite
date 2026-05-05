@@ -11,6 +11,7 @@ from common.camera import (
     CameraStream,
     ProcessedCameraStream,
     cache_ip_webcam_source,
+    create_manual_ip_webcam_source,
     discover_all_cameras,
     ensure_live_feed_server,
 )
@@ -44,6 +45,8 @@ def init_state() -> None:
     st.session_state.setdefault("sources_loaded", False)
     st.session_state.setdefault("scan_mode", "Quick Scan")
     st.session_state.setdefault("stream_version", 0)
+    st.session_state.setdefault("manual_camera_ip", "")
+    st.session_state.setdefault("manual_camera_port", 8080)
 
 
 def refresh_sources() -> None:
@@ -54,6 +57,19 @@ def refresh_sources() -> None:
     st.session_state.sources_loaded = True
     if sources and st.session_state.selected_source not in st.session_state.source_map:
         st.session_state.selected_source = sources[0].name
+
+
+def add_manual_camera_source(ip_or_url: str, port: int) -> tuple[bool, str]:
+    source = create_manual_ip_webcam_source(ip_or_url, port)
+    if source is None:
+        return False, "Could not connect to that IP Webcam address. Check the IP, port, and that IP Webcam is running."
+
+    st.session_state.source_map[source.name] = source
+    st.session_state.sources = list(st.session_state.source_map.values())
+    st.session_state.selected_source = source.name
+    st.session_state.sources_loaded = True
+    cache_ip_webcam_source(source)
+    return True, f"Added camera source: {source.name}"
 
 
 def get_processor(project_name: str):
@@ -117,6 +133,24 @@ def render_metrics(info: dict) -> None:
 
 
 if hasattr(st, "fragment"):
+    @st.fragment(run_every="120ms")
+    def render_live_feed():
+        processed_stream = st.session_state.processed_stream
+        if processed_stream is None:
+            st.info("Waiting for camera frames...")
+            return
+
+        jpeg = processed_stream.read_jpeg()
+        if jpeg is None:
+            st.info("Waiting for camera frames...")
+            return
+
+        st.image(
+            jpeg,
+            caption=f"{st.session_state.selected_project} live feed",
+            use_container_width=True,
+        )
+
     @st.fragment(run_every="300ms")
     def render_live_metrics():
         processed_stream = st.session_state.processed_stream
@@ -132,6 +166,23 @@ if hasattr(st, "fragment"):
         st.subheader("Live Results")
         render_metrics(info)
 else:
+    def render_live_feed():
+        processed_stream = st.session_state.processed_stream
+        if processed_stream is None:
+            st.info("Waiting for camera frames...")
+            return
+
+        jpeg = processed_stream.read_jpeg()
+        if jpeg is None:
+            st.info("Waiting for camera frames...")
+            return
+
+        st.image(
+            jpeg,
+            caption=f"{st.session_state.selected_project} live feed",
+            use_container_width=True,
+        )
+
     def render_live_metrics():
         processed_stream = st.session_state.processed_stream
         if processed_stream is None:
@@ -170,6 +221,31 @@ with st.sidebar:
     )
     if st.button("Refresh Cameras", use_container_width=True):
         refresh_sources()
+
+    st.markdown("**Manual IP Webcam Entry**")
+    st.text_input(
+        "Camera IP or URL",
+        key="manual_camera_ip",
+        placeholder="Example: 192.168.1.15 or http://192.168.1.15:8080",
+        help="Enter the Android IP Webcam address manually if discovery does not find it.",
+    )
+    st.number_input(
+        "Port",
+        min_value=1,
+        max_value=65535,
+        key="manual_camera_port",
+        step=1,
+        help="Default IP Webcam port is usually 8080.",
+    )
+    if st.button("Add Manual Camera", use_container_width=True):
+        ok, message = add_manual_camera_source(
+            st.session_state.manual_camera_ip,
+            int(st.session_state.manual_camera_port),
+        )
+        if ok:
+            st.success(message)
+        else:
+            st.error(message)
 
     source_names = list(st.session_state.source_map.keys())
     if source_names and st.session_state.selected_source in source_names:
@@ -245,19 +321,9 @@ elif st.session_state.camera_started and st.session_state.camera_stream is not N
     ):
         start_stream()
 
-    processed_stream = st.session_state.processed_stream
-    frame_placeholder.markdown(
-        f"""
-        <div style="background:#111;border-radius:12px;padding:8px;">
-          <img
-            src="http://127.0.0.1:8765/stream/main?v={st.session_state.stream_version}"
-            style="width:100%;display:block;border-radius:8px;min-height:360px;object-fit:contain;"
-          />
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    with info_placeholder:
+    with feed_col:
+        render_live_feed()
+    with info_col:
         render_live_metrics()
 else:
     frame_placeholder.info("Choose a camera, select a project, and press Start.")

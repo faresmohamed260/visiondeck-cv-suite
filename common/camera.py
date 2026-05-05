@@ -157,6 +157,27 @@ def cache_ip_webcam_source(source: CameraSource) -> None:
     _write_camera_cache(payload)
 
 
+def create_manual_ip_webcam_source(ip_or_url: str, port: int = DEFAULT_IP_WEBCAM_PORT) -> Optional[CameraSource]:
+    value = ip_or_url.strip()
+    if not value:
+        return None
+
+    if "://" in value:
+        parsed = urlparse(value)
+        host = parsed.hostname
+        if not host:
+            return None
+        resolved_port = parsed.port or port
+        return _is_ip_webcam_host(host, resolved_port)
+
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return None
+
+    return _is_ip_webcam_host(value, port)
+
+
 def _is_ip_webcam_host(ip: str, port: int = DEFAULT_IP_WEBCAM_PORT) -> Optional[CameraSource]:
     base_url = f"http://{ip}:{port}"
     checks = [
